@@ -7,7 +7,7 @@ bool isValid(char * s) {
     int top = -1;
     
     for (int i = 0; s[i] != '\0'; i++) { 
-        if (s[i] == '(' || s[i] == '{' || s[i] == '[') {
+        if (s[i] == '(' || s[i] == '{' || s[i] == '[') { 
             stack[++top] = s[i]; // Push opening bracket
         } else {
             if (top == -1 || 
