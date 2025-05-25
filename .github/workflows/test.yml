@@ -1,89 +1,113 @@
-name: Validate Solution
+
+name: Run Code Tests
 
 on:
   push:
     paths:
-      - 'solutions/**'
+      - "solutions/**"
   pull_request:
     paths:
-      - 'solutions/**'
+      - "tests/**"
 
 jobs:
-  detect-changes:
+  run-tests:
     runs-on: ubuntu-latest
-    outputs:
-      changed_files: ${{ steps.changed_files.outputs.files }}
-      changed_count: ${{ steps.changed_files.outputs.count }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Get list of changed files
-        id: changed_files
-        run: |
-          files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'solutions/*')
-          count=$(echo "$files" | wc -l)
-          echo "files=$files" >> $GITHUB_OUTPUT
-          echo "count=$count" >> $GITHUB_OUTPUT
-
-  validate:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.changed_count == '1' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        if: endsWith(needs.detect-changes.outputs.changed_files, '.py')
-        uses: actions/setup-python@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          python-version: '3.x'
+          fetch-depth: 2  # Ensure previous commit is available
 
-      - name: Set up Java
-        if: endsWith(needs.detect-changes.outputs.changed_files, '.java')
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up C++
-        if: endsWith(needs.detect-changes.outputs.changed_files, '.cpp')
-        run: sudo apt-get update && sudo apt-get install -y g++
-
-      - name: Set up C
-        if: endsWith(needs.detect-changes.outputs.changed_files, '.c')
-        run: sudo apt-get update && sudo apt-get install -y gcc
-
-      - name: Determine language and run tests
+      - name: Detect Changed Files
+        id: changed-files
         run: |
-          file="${{ needs.detect-changes.outputs.changed_files }}"
-          if [[ "$file" == *.py ]]; then
-            echo "Running Python tests..."
-            python tests/test_valid_parentheses.py
-          elif [[ "$file" == *.java ]]; then
-            echo "Compiling and running Java tests..."
-            javac solutions/Solution.java tests/TestValidParentheses.java
-            java -cp . tests.TestValidParentheses
-          elif [[ "$file" == *.cpp ]]; then
-            echo "Compiling and running C++ tests..."
-            g++ tests/test_valid_parentheses.cpp -o test_cpp
-            ./test_cpp
-          elif [[ "$file" == *.c ]]; then
-            echo "Compiling and running C tests..."
-            gcc tests/test_valid_parentheses.c -o test_c
-            ./test_c
-          else
-            echo "Unsupported file type."
+          BEFORE_COMMIT="${{ github.event.before }}"
+          if [ -z "$BEFORE_COMMIT" ] || ! git cat-file -e "$BEFORE_COMMIT"^{commit}; then
+            BEFORE_COMMIT=$(git rev-parse HEAD~1)  # Use last commit as fallback
+          fi
+          
+          CHANGED_FILES=$(git diff --name-only "$BEFORE_COMMIT" HEAD | grep '^solutions/')
+          echo "Detected changed files: $CHANGED_FILES"
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No file changes detected. Exiting..."
             exit 1
           fi
 
-  multiple-changes:
-    needs: detect-changes
-    runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.changed_count != '1' }}
-    steps:
-      - name: Fail due to multiple solution files changed
+          echo "CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')" >> $GITHUB_ENV
+
+      - name: Determine File Type
+        id: determine-file
         run: |
-          echo "Error: Multiple solution files changed at once. Please modify only one solution file per commit."
-          exit 1
+          for file in $CHANGED_FILES; do
+            case "$file" in
+              *.c) echo "LANGUAGE=C" >> $GITHUB_ENV ;;
+              *.cpp) echo "LANGUAGE=C++" >> $GITHUB_ENV ;;
+              *.py) echo "LANGUAGE=Python" >> $GITHUB_ENV ;;
+              *.java) echo "LANGUAGE=Java" >> $GITHUB_ENV ;;
+            esac
+          done
+
+      - name: Install C Dependencies
+        if: env.LANGUAGE == 'C'
+        run: sudo apt update && sudo apt install -y gcc
+
+      - name: Install C++ Dependencies
+        if: env.LANGUAGE == 'C++'
+        run: sudo apt update && sudo apt install -y g++
+
+      - name: Install Python Dependencies
+        if: env.LANGUAGE == 'Python'
+        run: sudo apt update && sudo apt install -y python3
+
+      - name: Install Java Dependencies
+        if: env.LANGUAGE == 'Java'
+        run: sudo apt update && sudo apt install -y openjdk-17-jdk
+
+      - name: Compile and Run Java Tests
+        if: env.LANGUAGE == 'Java'
+        run: |
+            set -e  # Exit immediately if any command fails
+            javac -d . solutions/*.java tests/*.java
+            echo "Running Java Test Cases..."
+            java tests.Test | tee test_results.log
+
+
+
+      - name: Compile and Run C Tests
+        if: env.LANGUAGE == 'C'
+        run: |
+          gcc tests/test.c -o test_runner
+          echo "Running C Test Cases..."
+          ./test_runner | tee test_results.log
+          exit_code=${PIPESTATUS[0]}
+          exit $exit_code
+
+      - name: Compile and Run C++ Tests
+        if: env.LANGUAGE == 'C++'
+        run: |
+          set -e  # Exit immediately on any error
+          g++ tests/test.cpp -o test_runner_cpp
+          echo "Running C++ Test Cases..."
+          ./test_runner_cpp | tee test_results.log
+          exit_code=${PIPESTATUS[0]}
+          exit $exit_code
+
+
+      - name: Run Python Tests
+        if: env.LANGUAGE == 'Python'
+        run: |
+          echo "Running Python Test Cases..."
+          python3 tests/test.py
+          if [ $? -ne 0 ]; then
+            echo "Test failed, exiting with status 1."
+            exit 1
+          fi
+
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test_results.log
