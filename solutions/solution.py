@@ -2,7 +2,7 @@ class Solution(object):
     def isValid(self, s):
         stack = []
         hash = {')': '(', ']': '[', '}': '{'}
-        
+         
         # Loop through each character in the string
         for char in s:
             if char in hash:
