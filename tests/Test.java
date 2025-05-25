@@ -27,8 +27,7 @@ public class Test {
             boolean result = sol.isValid(input);
             boolean passed = result == expected;
 
-            System.out.printf("Test Case %d: Input: \"%s\" | Expected: %b | Result: %b | %s\n",
-                i + 1, input, expected, result, passed ? "Passed" : "Failed");
+            System.out.printf("Test Case %d: %s\n", i + 1, passed ? "Passed" : "Failed");
 
             if (!passed) {
                 allPassed = false;
