@@ -1,6 +1,7 @@
 import sys
 import os
 
+# Add the solutions directory to the path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "solutions")))
 
 from solution import Solution
@@ -25,8 +26,9 @@ def run_tests():
 
     for i, (input_str, expected) in enumerate(test_cases, 1):
         result = sol.isValid(input_str)
-        print(f"Test Case {i}: Input: \"{input_str}\" | Expected: {expected} | Result: {result} | {'Passed' if result == expected else 'Failed'}")
-        if result != expected:
+        passed = result == expected
+        print(f"Test Case {i}: {'Passed' if passed else 'Failed'}")
+        if not passed:
             all_passed = False
 
     return 0 if all_passed else 1
