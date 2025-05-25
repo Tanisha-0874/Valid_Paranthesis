@@ -1,0 +1,89 @@
+name: Validate Solution
+
+on:
+  push:
+    paths:
+      - 'solutions/**'
+  pull_request:
+    paths:
+      - 'solutions/**'
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed_files: ${{ steps.changed_files.outputs.files }}
+      changed_count: ${{ steps.changed_files.outputs.count }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get list of changed files
+        id: changed_files
+        run: |
+          files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'solutions/*')
+          count=$(echo "$files" | wc -l)
+          echo "files=$files" >> $GITHUB_OUTPUT
+          echo "count=$count" >> $GITHUB_OUTPUT
+
+  validate:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.detect-changes.outputs.changed_count == '1' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        if: endsWith(needs.detect-changes.outputs.changed_files, '.py')
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Set up Java
+        if: endsWith(needs.detect-changes.outputs.changed_files, '.java')
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up C++
+        if: endsWith(needs.detect-changes.outputs.changed_files, '.cpp')
+        run: sudo apt-get update && sudo apt-get install -y g++
+
+      - name: Set up C
+        if: endsWith(needs.detect-changes.outputs.changed_files, '.c')
+        run: sudo apt-get update && sudo apt-get install -y gcc
+
+      - name: Determine language and run tests
+        run: |
+          file="${{ needs.detect-changes.outputs.changed_files }}"
+          if [[ "$file" == *.py ]]; then
+            echo "Running Python tests..."
+            python tests/test_valid_parentheses.py
+          elif [[ "$file" == *.java ]]; then
+            echo "Compiling and running Java tests..."
+            javac solutions/Solution.java tests/TestValidParentheses.java
+            java -cp . tests.TestValidParentheses
+          elif [[ "$file" == *.cpp ]]; then
+            echo "Compiling and running C++ tests..."
+            g++ tests/test_valid_parentheses.cpp -o test_cpp
+            ./test_cpp
+          elif [[ "$file" == *.c ]]; then
+            echo "Compiling and running C tests..."
+            gcc tests/test_valid_parentheses.c -o test_c
+            ./test_c
+          else
+            echo "Unsupported file type."
+            exit 1
+          fi
+
+  multiple-changes:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.detect-changes.outputs.changed_count != '1' }}
+    steps:
+      - name: Fail due to multiple solution files changed
+        run: |
+          echo "Error: Multiple solution files changed at once. Please modify only one solution file per commit."
+          exit 1
