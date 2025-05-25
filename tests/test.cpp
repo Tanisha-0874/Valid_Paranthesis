@@ -29,10 +29,7 @@ int main() {
         bool result = sol.isValid(input);
         bool passed = result == expected;
 
-        cout << "Test Case " << (i + 1) << ": Input: \"" << input
-             << "\" | Expected: " << (expected ? "true" : "false")
-             << " | Result: " << (result ? "true" : "false")
-             << " | " << (passed ? "Passed" : "Failed") << endl;
+        cout << "Test Case " << (i + 1) << ": " << (passed ? "Passed" : "Failed") << endl;
 
         if (!passed) allPassed = false;
     }
