@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "../solutions/solution.cpp"  // Include the implementation
+#include "../solutions/solution.c"  // Include the implementation
 
 int main() {
     Solution sol;
