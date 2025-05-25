@@ -1,8 +1,6 @@
-#include <iostream>
-#include <vector>
-#include <string>
-
-using namespace std;
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 
 #include "../solutions/solution.cpp"  // Include the implementation
 
