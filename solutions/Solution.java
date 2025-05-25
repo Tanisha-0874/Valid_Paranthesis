@@ -2,7 +2,7 @@ package solutions;
 
 import java.util.*; 
 
-class Solution {
+public class Solution {
     public boolean isValid(String s) {
         Stack<Character> st=new Stack<Character>();
         for(char c:s.toCharArray()){
