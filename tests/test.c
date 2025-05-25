@@ -2,12 +2,13 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "../solutions/solution.c"  // Include the implementation
+#include "../solutions/solution.c"  // Include your C solution
 
 int main() {
-    Solution sol;
-
-    vector<pair<string, bool>> test_cases = {
+    struct {
+        const char *input;
+        bool expected;
+    } test_cases[] = {
         {"()", true},
         {"()[]{}", true},
         {"(]", false},
@@ -20,16 +21,19 @@ int main() {
         {"([)]", false}
     };
 
+    int num_tests = sizeof(test_cases) / sizeof(test_cases[0]);
     bool allPassed = true;
 
-    for (size_t i = 0; i < test_cases.size(); ++i) {
-        const auto& [input, expected] = test_cases[i];
-        bool result = sol.isValid(input);
-        bool passed = result == expected;
+    for (int i = 0; i < num_tests; i++) {
+        const char *input = test_cases[i].input;
+        bool expected = test_cases[i].expected;
+        bool result = isValid((char *)input);
 
-        cout << "Test Case " << (i + 1) << (passed ? "Passed" : "Failed") << endl;
+        printf("Test Case %d: %s\n", i + 1, result == expected ? "Passed" : "Failed");
 
-        if (!passed) allPassed = false;
+        if (result != expected) {
+            allPassed = false;
+        }
     }
 
     return allPassed ? 0 : 1;
