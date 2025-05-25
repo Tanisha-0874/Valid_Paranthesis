@@ -1,4 +1,9 @@
-from solutions.solution import Solution
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "solutions")))
+
+from solution import Solution
 
 def run_tests():
     sol = Solution()
